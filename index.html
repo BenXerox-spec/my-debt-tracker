@@ -34,11 +34,21 @@
         .card .amount { font-size: 1.4em; font-weight: bold; }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn { color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; flex: 1; font-weight: bold; transition: background 0.3s; text-align: center; }
-        .btn-primary { background-color: #1F4E78; }
+        .btn { color: white; padding: 15px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.05em; flex: 1; font-weight: bold; transition: background 0.3s; text-align: center; }
+        .btn-success { background-color: #4CAF50; }
+        .btn-success:hover { background-color: #388E3C; }
         .btn-danger { background-color: #e53935; }
-        .btn-warning { background-color: #ff9800; }
+        .btn-primary { background-color: #1F4E78; }
         
+        /* Modal Style (ป๊อปอัปยืนยันจ่ายหนี้) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; }
+        .modal-title { color: #1F4E78; margin-top: 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .slip-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.95em; }
+        .slip-table td { padding: 8px 0; border-bottom: 1px dashed #ddd; }
+        .slip-total { font-size: 1.3em; font-weight: bold; color: #f44336; text-align: center; margin: 15px 0; padding: 10px; background: #ffeeee; border-radius: 8px; }
+
         /* Grid เดือนแบบ Scrollable */
         .month-grid-container { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 20px; }
         .grid-header { font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 10px; text-align: center; }
@@ -56,7 +66,6 @@
         .nav-bar { display: flex; justify-content: space-between; align-items: center; background: #1F4E78; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .nav-bar button { background: none; border: none; color: white; font-size: 1.1em; cursor: pointer; font-weight: bold; }
         
-        /* งบประมาณแนะนำ */
         .budget-suggestions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
         .suggest-box { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .suggest-box .title { font-size: 0.8em; color: #666; }
@@ -114,19 +123,19 @@
                 <h3>ยอดผ่อนหนี้รวม</h3>
                 <div class="amount" id="sum-debt">฿0</div>
             </div>
-            <div class="card bg-cash" onclick="goToExpensePage()">
-                <h3>เงินเหลือ (แตะเพื่อจัดการ) 👆</h3>
+            <div class="card bg-cash" onclick="openExpensePage(simulatedMonths)">
+                <h3>เงินเหลือ (แตะจัดการเดือนนี้) 👆</h3>
                 <div class="amount" id="sum-cash">฿0</div>
             </div>
         </div>
 
         <div class="btn-group">
-            <button class="btn btn-primary" onclick="payOneMonth()">จำลองจ่ายหนี้ 1 เดือน ⏭️</button>
-            <button class="btn btn-danger" onclick="resetData()">รีเซ็ตข้อมูล 🔄</button>
+            <button class="btn btn-success" onclick="openPayModal()">✅ บันทึกจ่ายหนี้เดือนนี้</button>
+            <button class="btn btn-danger" onclick="resetData()">ลบข้อมูล 🔄</button>
         </div>
 
         <div class="month-grid-container">
-            <div class="grid-header" id="grid-title">จำลองระยะเวลาผ่อนหนี้ (จนกว่าจะหมด)</div>
+            <div class="grid-header" id="grid-title">ระยะเวลาผ่อนหนี้ (กดที่เดือนเพื่อดูประวัติรายจ่าย)</div>
             <div class="month-grid" id="year-grid">
                 </div>
         </div>
@@ -174,7 +183,7 @@
             </div>
         </div>
 
-        <h3 style="color:#1F4E78; font-size: 1em; text-align: center;">💡 แผนการจัดสรรเงินแนะนำ</h3>
+        <h3 style="color:#1F4E78; font-size: 1em; text-align: center;">💡 แผนการจัดสรรเงิน</h3>
         <div class="budget-suggestions">
             <div class="suggest-box">
                 <div class="title">🍲 ค่าอาหาร (50%)</div>
@@ -198,7 +207,7 @@
             </div>
         </div>
 
-        <div class="control-panel">
+        <div class="control-panel" id="expense-form-panel">
             <h3 style="margin-top:0; color:#1F4E78;" id="form-title">บันทึกรายจ่าย</h3>
             <div class="form-group">
                 <label>หมวดหมู่</label>
@@ -231,17 +240,36 @@
 
 </div>
 
+<div class="modal-overlay" id="payModal">
+    <div class="modal-content">
+        <h2 class="modal-title" id="modal-month-title">ยืนยันจ่ายหนี้</h2>
+        <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: -5px;">รายการที่ต้องชำระในเดือนนี้</p>
+        
+        <table class="slip-table" id="modal-slip-list">
+            </table>
+        
+        <div class="slip-total">
+            ยอดรวมที่ต้องจ่าย: <br><span id="modal-slip-total">฿0</span>
+        </div>
+        
+        <button class="btn btn-success" style="width:100%; margin-bottom:10px; padding: 15px;" onclick="confirmPayDebt()">ยืนยันว่าจ่ายครบแล้ว ✅</button>
+        <button class="btn" style="width:100%; background:#e0e0e0; color:#333;" onclick="closePayModal()">ยกเลิก</button>
+    </div>
+</div>
+
 <script>
     // --- State Management ---
     const startYear = 2026;
     const startMonth = 8; // กันยายน
     let simulatedMonths = 0; 
+    let viewingMonth = 0; 
+    let monthExpenses = {}; 
+    
     const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
     const shortMonthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
     
-    let currentSummary = { cash: 0 };
-    let localExpenses = []; // เก็บ Data ใน Memory แบบ Local
-    let editId = null; // เช็คสถานะการแก้ไข
+    let currentSummary = { cash: 0, debtPayment: 0 };
+    let editId = null; 
 
     const initialDebts = [
         { name: "บ้าน", balance: 1107494, payment: 6100 },
@@ -256,8 +284,29 @@
 
     let debts = JSON.parse(JSON.stringify(initialDebts));
 
-    // วันที่เริ่มต้น
     document.getElementById('expDate').valueAsDate = new Date();
+
+    // --- LocalStorage Functions ---
+    function loadData() {
+        const saved = localStorage.getItem('debtAppDB');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            simulatedMonths = parsed.simulatedMonths || 0;
+            monthExpenses = parsed.monthExpenses || {};
+            if (parsed.income) document.getElementById('income').value = parsed.income;
+            if (parsed.savingsPct) document.getElementById('savings-pct').value = parsed.savingsPct;
+        }
+    }
+
+    function saveData() {
+        const data = {
+            simulatedMonths: simulatedMonths,
+            monthExpenses: monthExpenses,
+            income: document.getElementById('income').value,
+            savingsPct: document.getElementById('savings-pct').value
+        };
+        localStorage.setItem('debtAppDB', JSON.stringify(data));
+    }
 
     function formatMoney(amount) {
         return "฿" + amount.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
@@ -273,30 +322,42 @@
         let mNameFull = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`;
         
         document.getElementById("current-month-display").innerText = `เดือนปัจจุบัน: ${mNameFull}`;
-        document.getElementById("month-counter").innerText = simulatedMonths === 0 ? "สถานะ: ปัจจุบัน" : `จำลองล่วงหน้า: ${simulatedMonths} เดือน`;
-        document.getElementById("expense-month-title").innerText = `งบ: ${mNameFull}`;
-
-        // Render Grid ยาวจนกว่าหนี้ก้อนสุดท้ายจะหมด
+        document.getElementById("month-counter").innerText = simulatedMonths === 0 ? "สถานะ: ปัจจุบัน" : `ชำระหนี้ล่วงหน้ามาแล้ว: ${simulatedMonths} เดือน`;
+        
         const grid = document.getElementById("year-grid");
         grid.innerHTML = "";
         
         let totalGridBoxes = simulatedMonths + maxDebtMonths;
-        if(totalGridBoxes === 0) totalGridBoxes = 1; // กันบัคกรณีหนี้ 0 หมด
+        if(totalGridBoxes === 0) totalGridBoxes = 1;
 
         for(let i = 0; i < totalGridBoxes; i++) {
             let mDate = new Date(startYear, startMonth + i, 1);
             let mName = `${shortMonthNames[mDate.getMonth()]} ${String(mDate.getFullYear()+543).substring(2)}`;
-            let isPaid = i < simulatedMonths;
+            let isPastOrCurrent = i <= simulatedMonths;
             let isActive = i === simulatedMonths; 
             
             let div = document.createElement("div");
-            div.className = `month-box ${isPaid ? "paid" : ""} ${isActive ? "active-month" : ""}`;
+            div.className = `month-box ${isPastOrCurrent ? "paid" : ""} ${isActive ? "active-month" : ""}`;
             div.innerText = mName;
+            
+            if (isPastOrCurrent) {
+                div.style.cursor = "pointer";
+                div.onclick = function() { openExpensePage(i); };
+                div.title = "กดเพื่อดู/บันทึกรายจ่ายเดือนนี้";
+            }
+            
             grid.appendChild(div);
         }
     }
 
     function calculate() {
+        debts = JSON.parse(JSON.stringify(initialDebts));
+        for(let m = 0; m < simulatedMonths; m++) {
+            debts.forEach(debt => {
+                if (debt.balance > 0) debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
+            });
+        }
+
         const income = parseFloat(document.getElementById("income").value) || 0;
         const savingsPct = parseFloat(document.getElementById("savings-pct").value) || 0;
         document.getElementById("savings-val").innerText = savingsPct + "%";
@@ -315,6 +376,7 @@
 
         const remainingCash = income - savingsAmount - totalDebtPayment;
         currentSummary.cash = remainingCash;
+        currentSummary.debtPayment = totalDebtPayment;
 
         document.getElementById("sum-income").innerText = formatMoney(income);
         document.getElementById("sum-savings").innerText = formatMoney(savingsAmount);
@@ -323,6 +385,7 @@
 
         renderTable();
         updateDisplayDates(maxMonthsLeft);
+        saveData(); 
     }
 
     function renderTable() {
@@ -342,44 +405,85 @@
         });
     }
 
-    function payOneMonth() {
-        simulatedMonths++; 
+    // --- Pay Debt Modal Functions ---
+    function openPayModal() {
+        let currentDate = new Date(startYear, startMonth + simulatedMonths, 1);
+        let mNameFull = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`;
+        
+        document.getElementById('modal-month-title').innerText = `รอบบิล: ${mNameFull}`;
+        
+        let slipHtml = '';
         debts.forEach(debt => {
             if (debt.balance > 0) {
-                debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
+                let actualPayment = (debt.balance < debt.payment) ? debt.balance : debt.payment;
+                slipHtml += `<tr>
+                                <td>${debt.name}</td>
+                                <td style="text-align: right; color:#333;">${formatMoney(actualPayment)}</td>
+                             </tr>`;
             }
         });
         
-        // **รีเซ็ตรายจ่ายทั้งหมดเมื่อขึ้นเดือนใหม่**
-        localExpenses = []; 
+        if(slipHtml === '') {
+            slipHtml = '<tr><td colspan="2" style="text-align:center; color:#4CAF50; font-weight:bold; border:none; padding:20px;">🎉 ยินดีด้วย! คุณไม่มีหนี้ที่ต้องชำระแล้ว</td></tr>';
+            document.getElementById('modal-slip-total').innerText = '฿0';
+        } else {
+            document.getElementById('modal-slip-total').innerText = formatMoney(currentSummary.debtPayment);
+        }
+
+        document.getElementById('modal-slip-list').innerHTML = slipHtml;
+        document.getElementById('payModal').classList.add('active');
+    }
+
+    function closePayModal() {
+        document.getElementById('payModal').classList.remove('active');
+    }
+
+    function confirmPayDebt() {
+        simulatedMonths++; 
+        if(!monthExpenses[simulatedMonths]) {
+            monthExpenses[simulatedMonths] = [];
+        }
         cancelEdit();
         calculate(); 
+        closePayModal();
+        
+        // เด้งไปหน้ารายจ่ายอัตโนมัติเพื่อให้เริ่มจดเงินคงเหลือของเดือนใหม่
+        openExpensePage(simulatedMonths);
     }
 
     function resetData() {
-        simulatedMonths = 0; 
-        debts = JSON.parse(JSON.stringify(initialDebts)); 
-        localExpenses = [];
-        cancelEdit();
-        calculate();
+        if(confirm("แน่ใจหรือไม่? ข้อมูลการจำลองและรายจ่ายที่จดไว้ทั้งหมดจะถูกลบ!")) {
+            localStorage.removeItem('debtAppDB');
+            simulatedMonths = 0;
+            monthExpenses = {};
+            document.getElementById('income').value = 32000;
+            document.getElementById('savings-pct').value = 10;
+            cancelEdit();
+            calculate();
+        }
     }
 
     // --- View Navigation & Expense Functions ---
-    function goToExpensePage() {
+    function openExpensePage(monthIndex) {
+        viewingMonth = monthIndex;
         document.getElementById('main-page').classList.remove('active');
         document.getElementById('expense-page').classList.add('active');
+        
+        let targetDate = new Date(startYear, startMonth + viewingMonth, 1);
+        document.getElementById("expense-month-title").innerText = `งบ: ${shortMonthNames[targetDate.getMonth()]} ${String(targetDate.getFullYear()+543).substring(2)}`;
+        
         renderExpenseView(); 
     }
 
     function goToMainPage() {
         document.getElementById('expense-page').classList.remove('active');
         document.getElementById('main-page').classList.add('active');
+        cancelEdit();
     }
 
     function renderExpenseView() {
-        const budget = currentSummary.cash;
+        const budget = currentSummary.cash; 
         
-        // คำนวณงบแนะนำ
         const sugFood = budget * 0.50;
         const sugShop = budget * 0.20;
         const sugTravel = budget * 0.15;
@@ -394,10 +498,11 @@
         let spentCat = { "ค่าอาหาร": 0, "ของใช้": 0, "เดินทาง": 0, "อื่นๆ": 0 };
 
         const list = document.getElementById('recentList');
-        list.innerHTML = localExpenses.length === 0 ? '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการในเดือนนี้</div>' : '';
+        let currentExpList = monthExpenses[viewingMonth] || [];
         
-        // Loop รายการ
-        localExpenses.forEach(exp => {
+        list.innerHTML = currentExpList.length === 0 ? '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการในเดือนนี้</div>' : '';
+        
+        currentExpList.forEach(exp => {
             totalSpent += exp.amount;
             if(spentCat[exp.category] !== undefined) spentCat[exp.category] += exp.amount;
 
@@ -417,13 +522,11 @@
                 </div>`;
         });
 
-        // อัปเดตยอดใช้จ่ายตามหมวด
         document.getElementById('spent-food').innerText = `ใช้ไป: ฿${spentCat["ค่าอาหาร"].toLocaleString()}`;
         document.getElementById('spent-shop').innerText = `ใช้ไป: ฿${spentCat["ของใช้"].toLocaleString()}`;
         document.getElementById('spent-travel').innerText = `ใช้ไป: ฿${spentCat["เดินทาง"].toLocaleString()}`;
         document.getElementById('spent-misc').innerText = `ใช้ไป: ฿${spentCat["อื่นๆ"].toLocaleString()}`;
 
-        // อัปเดตบาร์
         const remain = budget - totalSpent;
         const percent = budget > 0 ? (remain / budget) * 100 : 0;
         const validPercent = Math.max(0, Math.min(100, percent)); 
@@ -446,33 +549,34 @@
         const note = document.getElementById('expNote').value;
 
         if(!date || !amount || isNaN(amount)) { alert("กรุณาระบุวันที่และจำนวนเงินที่ถูกต้อง"); return; }
+        if(!monthExpenses[viewingMonth]) monthExpenses[viewingMonth] = [];
 
         if(editId) {
-            // Update
-            let index = localExpenses.findIndex(e => e.id === editId);
+            let index = monthExpenses[viewingMonth].findIndex(e => e.id === editId);
             if(index > -1) {
-                localExpenses[index] = { id: editId, category: cat, date: date, amount: amount, note: note };
+                monthExpenses[viewingMonth][index] = { id: editId, category: cat, date: date, amount: amount, note: note };
             }
             cancelEdit();
         } else {
-            // Add New (Push to top)
-            localExpenses.unshift({ id: generateId(), category: cat, date: date, amount: amount, note: note });
+            monthExpenses[viewingMonth].unshift({ id: generateId(), category: cat, date: date, amount: amount, note: note });
             document.getElementById('expAmount').value = '';
             document.getElementById('expNote').value = '';
         }
         
+        saveData(); 
         renderExpenseView();
     }
 
     function deleteExpense(id) {
         if(confirm("ลบรายการนี้?")) {
-            localExpenses = localExpenses.filter(e => e.id !== id);
+            monthExpenses[viewingMonth] = monthExpenses[viewingMonth].filter(e => e.id !== id);
+            saveData();
             renderExpenseView();
         }
     }
 
     function editExpense(id) {
-        let exp = localExpenses.find(e => e.id === id);
+        let exp = monthExpenses[viewingMonth].find(e => e.id === id);
         if(exp) {
             document.getElementById('expCategory').value = exp.category;
             document.getElementById('expDate').value = exp.date;
@@ -486,7 +590,6 @@
             document.getElementById('btnSave').style.color = "#333";
             document.getElementById('btnCancel').style.display = "block";
             
-            // Scroll ขึ้นไปที่ฟอร์ม
             window.scrollTo({ top: 300, behavior: 'smooth' });
         }
     }
@@ -503,7 +606,8 @@
         document.getElementById('expNote').value = '';
     }
 
-    // โหลดครั้งแรก
+    // เริ่มต้นระบบ
+    loadData();
     calculate();
 </script>
 
