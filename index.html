@@ -42,11 +42,12 @@
         .btn-primary { background-color: #1F4E78; }
         .btn-warning { background-color: #ffb300; color: #333; }
         
-        /* Modal Style (ป๊อปอัปยืนยันจ่ายหนี้) */
+        /* Modal Style */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
         .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; }
         .modal-title { color: #1F4E78; margin-top: 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
         .slip-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.95em; }
         .slip-table td { padding: 10px 0; border-bottom: 1px dashed #ddd; vertical-align: middle; }
         .slip-table input[type="checkbox"] { transform: scale(1.3); margin-right: 10px; cursor: pointer; }
@@ -105,11 +106,11 @@
 
         <div class="control-panel">
             <div class="form-group">
-                <label>รายได้รายเดือน (บาท)</label>
+                <label>จำลองรายได้รายเดือน (บาท)</label>
                 <input type="number" id="income" value="32000" oninput="calculate()">
             </div>
             <div class="form-group">
-                <label>เงินเก็บ (%): <span id="savings-val">10%</span></label>
+                <label>จำลองเงินเก็บ (%): <span id="savings-val">10%</span></label>
                 <input type="range" id="savings-pct" min="0" max="30" value="10" oninput="calculate()">
             </div>
         </div>
@@ -189,25 +190,29 @@
             </div>
         </div>
 
-        <h3 style="color:#1F4E78; font-size: 1em; text-align: center;">💡 แผนการจัดสรรเงิน</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+            <h3 style="color:#1F4E78; font-size: 1.1em; margin:0;">💡 แผนการจัดสรรเงิน</h3>
+            <button onclick="openSettingsModal()" style="background:none; border:none; font-size:1.5em; cursor:pointer;" title="ตั้งค่างบประมาณเดือนนี้">⚙️</button>
+        </div>
+
         <div class="budget-suggestions">
             <div class="suggest-box">
-                <div class="title">🍲 ค่าอาหาร (50%)</div>
+                <div class="title" id="title-food">🍲 ค่าอาหาร</div>
                 <div class="val" id="sug-food">฿0</div>
                 <div class="spent" id="spent-food">ใช้ไป: ฿0</div>
             </div>
             <div class="suggest-box">
-                <div class="title">🛒 ของใช้ (20%)</div>
+                <div class="title" id="title-shop">🛒 ของใช้</div>
                 <div class="val" id="sug-shop">฿0</div>
                 <div class="spent" id="spent-shop">ใช้ไป: ฿0</div>
             </div>
             <div class="suggest-box">
-                <div class="title">🚌 เดินทาง (15%)</div>
+                <div class="title" id="title-travel">🚌 เดินทาง</div>
                 <div class="val" id="sug-travel">฿0</div>
                 <div class="spent" id="spent-travel">ใช้ไป: ฿0</div>
             </div>
             <div class="suggest-box">
-                <div class="title">📦 อื่นๆ (15%)</div>
+                <div class="title" id="title-misc">📦 อื่นๆ</div>
                 <div class="val" id="sug-misc">฿0</div>
                 <div class="spent" id="spent-misc">ใช้ไป: ฿0</div>
             </div>
@@ -251,8 +256,7 @@
         <h2 class="modal-title" id="modal-month-title">ยืนยันจ่ายหนี้</h2>
         <p style="text-align: center; font-size: 0.85em; color: #666; margin-top: -5px;">(กรุณาติ๊กให้ครบทุกรายการก่อนกดยืนยัน)</p>
         
-        <table class="slip-table" id="modal-slip-list">
-            </table>
+        <table class="slip-table" id="modal-slip-list"></table>
         
         <div class="slip-total">
             ยอดรวมที่ต้องจ่าย: <br><span id="modal-slip-total">฿0</span>
@@ -263,6 +267,48 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+        <h2 class="modal-title">⚙️ ตั้งค่างบประมาณเดือนนี้</h2>
+        
+        <div class="form-group">
+            <label>รายรับจริงในเดือนนี้ (บาท)</label>
+            <input type="number" id="set-income">
+        </div>
+        <div class="form-group">
+            <label>เป้าหมายหักเงินออม (%)</label>
+            <input type="number" id="set-savings" max="100">
+        </div>
+        
+        <h4 style="margin-bottom: 5px; color: #1F4E78; font-size: 0.95em;">ปรับแผนสัดส่วนการใช้จ่าย (รวมต้องได้ 100%)</h4>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group">
+                <label>ค่าอาหาร %</label>
+                <input type="number" id="set-food" oninput="checkAllocTotal()">
+            </div>
+            <div class="form-group">
+                <label>ของใช้ %</label>
+                <input type="number" id="set-shop" oninput="checkAllocTotal()">
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group">
+                <label>เดินทาง %</label>
+                <input type="number" id="set-travel" oninput="checkAllocTotal()">
+            </div>
+            <div class="form-group">
+                <label>อื่นๆ %</label>
+                <input type="number" id="set-misc" oninput="checkAllocTotal()">
+            </div>
+        </div>
+        
+        <div id="set-warn" style="color:#e53935; font-size:0.85em; font-weight:bold; margin-bottom:10px; text-align:center;">รวมสัดส่วน: <span id="alloc-total">100</span>% (ต้องเท่ากับ 100%)</div>
+        
+        <button class="btn btn-primary" id="btn-save-settings" style="width:100%; margin-bottom:10px; padding:12px;" onclick="saveBudgetSettings()">บันทึกการตั้งค่าเดือนนี้</button>
+        <button class="btn" style="width:100%; background:#e0e0e0; color:#333;" onclick="closeSettingsModal()">ยกเลิก</button>
+    </div>
+</div>
+
 <script>
     // --- State Management ---
     const startYear = 2026;
@@ -270,9 +316,12 @@
     let simulatedMonths = 0; 
     let viewingMonth = 0; 
     
-    // เก็บ History หนี้และรายจ่ายแบบแยกตามเดือน
+    // Data Storage
     let debtHistory = {}; 
     let monthExpenses = {}; 
+    let monthlySettings = {}; // เก็บการตั้งค่างบประมาณของแต่ละเดือน
+    
+    const defaultAlloc = { food: 50, shop: 20, travel: 15, misc: 15 };
     
     const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
     const shortMonthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -296,11 +345,12 @@
 
     // --- LocalStorage Functions ---
     function loadData() {
-        const saved = localStorage.getItem('debtAppDB_v2');
+        const saved = localStorage.getItem('debtAppDB_v3');
         if (saved) {
             const parsed = JSON.parse(saved);
             simulatedMonths = parsed.simulatedMonths || 0;
             monthExpenses = parsed.monthExpenses || {};
+            monthlySettings = parsed.monthlySettings || {};
             debtHistory = parsed.debtHistory || { 0: JSON.parse(JSON.stringify(initialDebts)) };
             if (parsed.income) document.getElementById('income').value = parsed.income;
             if (parsed.savingsPct) document.getElementById('savings-pct').value = parsed.savingsPct;
@@ -313,11 +363,12 @@
         const data = {
             simulatedMonths: simulatedMonths,
             monthExpenses: monthExpenses,
+            monthlySettings: monthlySettings,
             debtHistory: debtHistory,
             income: document.getElementById('income').value,
             savingsPct: document.getElementById('savings-pct').value
         };
-        localStorage.setItem('debtAppDB_v2', JSON.stringify(data));
+        localStorage.setItem('debtAppDB_v3', JSON.stringify(data));
     }
 
     function formatMoney(amount) {
@@ -363,7 +414,6 @@
     }
 
     function calculate() {
-        // ดึงข้อมูลหนี้ของเดือนปัจจุบันมาแสดง (ถ้าพังให้ fallback กลับไปเอาเดือน 0)
         if(!debtHistory[simulatedMonths]) {
             debtHistory[simulatedMonths] = JSON.parse(JSON.stringify(debtHistory[simulatedMonths-1] || initialDebts));
         }
@@ -405,8 +455,6 @@
         debts.forEach((debt, index) => {
             let actualPayment = (debt.balance > 0 && debt.balance < debt.payment) ? debt.balance : debt.payment;
             let monthsLeft = debt.balance <= 0 ? 0 : Math.ceil(debt.balance / debt.payment);
-            
-            // ปุ่มโปะ (แก้ไข) จะโชว์เฉพาะหนี้ที่ยังไม่หมด
             let editBtn = debt.balance > 0 ? `<span class="btn-edit-inline" onclick="editDebtBalance(${index})">โปะ/แก้</span>` : '';
 
             let row = `<tr class="${debt.balance <= 0 ? 'zero-balance' : ''}">
@@ -419,7 +467,6 @@
         });
     }
 
-    // ฟังก์ชันแก้ไขยอดหนี้ (โปะเงิน)
     function editDebtBalance(index) {
         let currentBal = debts[index].balance;
         let input = prompt(`แก้ไขยอดคงเหลือของ "${debts[index].name}"\n(ป้อนยอดใหม่ที่ต้องการหลังจากโปะ):`, currentBal);
@@ -428,7 +475,6 @@
             let newVal = parseFloat(input);
             if(!isNaN(newVal) && newVal >= 0) {
                 debts[index].balance = newVal;
-                // เซฟทับข้อมูลหนี้ในเดือนปัจจุบัน
                 debtHistory[simulatedMonths] = JSON.parse(JSON.stringify(debts));
                 calculate();
             } else {
@@ -437,7 +483,7 @@
         }
     }
 
-    // --- Pay Debt Modal & Checkbox Logic ---
+    // --- Pay Debt Modal ---
     function openPayModal() {
         let currentDate = new Date(startYear, startMonth + simulatedMonths, 1);
         let mNameFull = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`;
@@ -491,31 +537,27 @@
     }
 
     function confirmPayDebt() {
-        // หักยอดหนี้เตรียมสำหรับเดือนถัดไป
         let nextDebts = JSON.parse(JSON.stringify(debts));
         nextDebts.forEach(debt => {
             if (debt.balance > 0) debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
         });
 
         simulatedMonths++; 
-        debtHistory[simulatedMonths] = nextDebts; // เซฟประวัติสำหรับเดือนใหม่
-
-        if(!monthExpenses[simulatedMonths]) {
-            monthExpenses[simulatedMonths] = [];
-        }
+        debtHistory[simulatedMonths] = nextDebts; 
+        if(!monthExpenses[simulatedMonths]) monthExpenses[simulatedMonths] = [];
+        
         cancelEdit();
         calculate(); 
         closePayModal();
-        
-        // เด้งไปหน้ารายจ่ายอัตโนมัติเพื่อให้เริ่มจดเงินคงเหลือของเดือนใหม่
         openExpensePage(simulatedMonths);
     }
 
     function resetData() {
         if(confirm("แน่ใจหรือไม่? ข้อมูลการจำลองและรายจ่ายที่จดไว้ทั้งหมดจะถูกลบเริ่มต้นใหม่!")) {
-            localStorage.removeItem('debtAppDB_v2');
+            localStorage.removeItem('debtAppDB_v3');
             simulatedMonths = 0;
             monthExpenses = {};
+            monthlySettings = {};
             debtHistory = { 0: JSON.parse(JSON.stringify(initialDebts)) };
             document.getElementById('income').value = 32000;
             document.getElementById('savings-pct').value = 10;
@@ -524,7 +566,7 @@
         }
     }
 
-    // --- View Navigation, Undo & Expense Functions ---
+    // --- Expense Page & Revert Logic ---
     function openExpensePage(monthIndex) {
         viewingMonth = monthIndex;
         document.getElementById('main-page').classList.remove('active');
@@ -542,14 +584,13 @@
         cancelEdit();
     }
     
-    // ฟังก์ชันย้อนเวลากลับมาที่เดือนที่คลิก (ลบอนาคตทิ้ง)
     function revertToThisMonth() {
-        if(confirm("⚠️ คำเตือน: คุณกำลังจะย้อนเวลากลับมาเริ่มที่เดือนนี้\nข้อมูลการจำลองและบิลรายจ่ายของเดือนในอนาคตทั้งหมดจะถูกลบทิ้ง แน่ใจหรือไม่?")) {
+        if(confirm("⚠️ คำเตือน: คุณกำลังจะย้อนเวลากลับมาเริ่มที่เดือนนี้\nข้อมูลการจำลอง บิลรายจ่าย และการตั้งค่าของเดือนในอนาคตทั้งหมดจะถูกลบทิ้ง แน่ใจหรือไม่?")) {
             simulatedMonths = viewingMonth;
             
-            // เคลียร์ History ที่เกินกว่าเดือนปัจจุบัน
             Object.keys(debtHistory).forEach(m => { if(parseInt(m) > simulatedMonths) delete debtHistory[m]; });
             Object.keys(monthExpenses).forEach(m => { if(parseInt(m) > simulatedMonths) delete monthExpenses[m]; });
+            Object.keys(monthlySettings).forEach(m => { if(parseInt(m) > simulatedMonths) delete monthlySettings[m]; });
             
             saveData();
             goToMainPage();
@@ -557,30 +598,107 @@
         }
     }
 
+    // --- Settings Modal Logic ---
+    function openSettingsModal() {
+        let settings = monthlySettings[viewingMonth] || {
+            income: document.getElementById("income").value,
+            savingsPct: document.getElementById("savings-pct").value,
+            alloc: defaultAlloc
+        };
+        
+        document.getElementById('set-income').value = settings.income;
+        document.getElementById('set-savings').value = settings.savingsPct;
+        document.getElementById('set-food').value = settings.alloc.food;
+        document.getElementById('set-shop').value = settings.alloc.shop;
+        document.getElementById('set-travel').value = settings.alloc.travel;
+        document.getElementById('set-misc').value = settings.alloc.misc;
+        
+        checkAllocTotal();
+        document.getElementById('settingsModal').classList.add('active');
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').classList.remove('active');
+    }
+
+    function checkAllocTotal() {
+        let food = parseFloat(document.getElementById('set-food').value) || 0;
+        let shop = parseFloat(document.getElementById('set-shop').value) || 0;
+        let travel = parseFloat(document.getElementById('set-travel').value) || 0;
+        let misc = parseFloat(document.getElementById('set-misc').value) || 0;
+        
+        let total = food + shop + travel + misc;
+        document.getElementById('alloc-total').innerText = total;
+        
+        let warnMsg = document.getElementById('set-warn');
+        let btnSave = document.getElementById('btn-save-settings');
+        
+        if(total !== 100) {
+            warnMsg.style.color = "#e53935";
+            btnSave.disabled = true;
+            btnSave.style.backgroundColor = "#ccc";
+        } else {
+            warnMsg.style.color = "#4CAF50";
+            btnSave.disabled = false;
+            btnSave.style.backgroundColor = "#1F4E78";
+        }
+    }
+
+    function saveBudgetSettings() {
+        let food = parseFloat(document.getElementById('set-food').value) || 0;
+        let shop = parseFloat(document.getElementById('set-shop').value) || 0;
+        let travel = parseFloat(document.getElementById('set-travel').value) || 0;
+        let misc = parseFloat(document.getElementById('set-misc').value) || 0;
+
+        if (food + shop + travel + misc !== 100) return;
+
+        monthlySettings[viewingMonth] = {
+            income: parseFloat(document.getElementById('set-income').value) || 0,
+            savingsPct: parseFloat(document.getElementById('set-savings').value) || 0,
+            alloc: { food: food, shop: shop, travel: travel, misc: misc }
+        };
+
+        saveData();
+        closeSettingsModal();
+        renderExpenseView();
+    }
+
     function renderExpenseView() {
-        // จัดการปุ่มย้อนเวลา (Undo)
         let revertBtnContainer = document.getElementById('revert-btn-container');
         if(viewingMonth < simulatedMonths) {
             revertBtnContainer.innerHTML = `<button class="btn btn-warning" style="width:100%; margin-bottom:15px;" onclick="revertToThisMonth()">⏪ ย้อนการจำลองกลับมาเริ่มที่เดือนนี้ (ลบข้อมูลอนาคต)</button>`;
-            document.getElementById('expense-form-panel').style.opacity = '0.6'; // ทำให้ฟอร์มจางลงนิดนึงเพราะเป็นเดือนอดีต
+            document.getElementById('expense-form-panel').style.opacity = '0.6'; 
         } else {
             revertBtnContainer.innerHTML = '';
             document.getElementById('expense-form-panel').style.opacity = '1';
         }
 
-        // ดึง Cash ของเดือนที่กำลังดูมาคำนวณงบ
-        // คำนวณแบบย้อนกลับ: รายได้ - ออม - ยอดจ่ายหนี้ของเดือนนั้น
+        // โหลดการตั้งค่าของเดือนนี้ (ถ้าไม่มีให้ดึงค่า Default)
+        let settings = monthlySettings[viewingMonth] || {
+            income: parseFloat(document.getElementById("income").value) || 0,
+            savingsPct: parseFloat(document.getElementById("savings-pct").value) || 0,
+            alloc: defaultAlloc
+        };
+
         let vDebts = debtHistory[viewingMonth] || initialDebts;
-        let vIncome = parseFloat(document.getElementById("income").value) || 0;
-        let vSavings = vIncome * (parseFloat(document.getElementById("savings-pct").value) / 100);
+        let vIncome = settings.income;
+        let vSavings = vIncome * (settings.savingsPct / 100);
         let vDebtPay = 0;
         vDebts.forEach(d => { if(d.balance>0) vDebtPay += (d.balance < d.payment) ? d.balance : d.payment; });
+        
         const budget = vIncome - vSavings - vDebtPay; 
         
-        const sugFood = budget * 0.50;
-        const sugShop = budget * 0.20;
-        const sugTravel = budget * 0.15;
-        const sugMisc = budget * 0.15;
+        // คำนวณสัดส่วนใหม่
+        const sugFood = budget * (settings.alloc.food / 100);
+        const sugShop = budget * (settings.alloc.shop / 100);
+        const sugTravel = budget * (settings.alloc.travel / 100);
+        const sugMisc = budget * (settings.alloc.misc / 100);
+
+        // อัปเดต UI 
+        document.getElementById('title-food').innerText = `🍲 ค่าอาหาร (${settings.alloc.food}%)`;
+        document.getElementById('title-shop').innerText = `🛒 ของใช้ (${settings.alloc.shop}%)`;
+        document.getElementById('title-travel').innerText = `🚌 เดินทาง (${settings.alloc.travel}%)`;
+        document.getElementById('title-misc').innerText = `📦 อื่นๆ (${settings.alloc.misc}%)`;
 
         document.getElementById('sug-food').innerText = formatMoney(sugFood);
         document.getElementById('sug-shop').innerText = formatMoney(sugShop);
@@ -593,116 +711,4 @@
         const list = document.getElementById('recentList');
         let currentExpList = monthExpenses[viewingMonth] || [];
         
-        list.innerHTML = currentExpList.length === 0 ? '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการในเดือนนี้</div>' : '';
-        
-        currentExpList.forEach(exp => {
-            totalSpent += exp.amount;
-            if(spentCat[exp.category] !== undefined) spentCat[exp.category] += exp.amount;
-
-            list.innerHTML += `
-                <div class="expense-item">
-                    <div class="expense-info">
-                        <span style="font-weight:bold; color:#1F4E78;">[${exp.category}]</span> ${exp.note || 'ไม่มีหมายเหตุ'}<br>
-                        <small style="color:#888;">${exp.date}</small>
-                    </div>
-                    <div style="text-align:right; margin-right:10px;">
-                        <strong style="color:#f44336;">-฿${exp.amount.toLocaleString()}</strong>
-                    </div>
-                    <div class="expense-actions">
-                        <button class="action-btn btn-edit" onclick="editExpense('${exp.id}')">✏️</button>
-                        <button class="action-btn btn-del" onclick="deleteExpense('${exp.id}')">🗑️</button>
-                    </div>
-                </div>`;
-        });
-
-        document.getElementById('spent-food').innerText = `ใช้ไป: ฿${spentCat["ค่าอาหาร"].toLocaleString()}`;
-        document.getElementById('spent-shop').innerText = `ใช้ไป: ฿${spentCat["ของใช้"].toLocaleString()}`;
-        document.getElementById('spent-travel').innerText = `ใช้ไป: ฿${spentCat["เดินทาง"].toLocaleString()}`;
-        document.getElementById('spent-misc').innerText = `ใช้ไป: ฿${spentCat["อื่นๆ"].toLocaleString()}`;
-
-        const remain = budget - totalSpent;
-        const percent = budget > 0 ? (remain / budget) * 100 : 0;
-        const validPercent = Math.max(0, Math.min(100, percent)); 
-
-        document.getElementById('stat-budget').innerText = formatMoney(budget);
-        document.getElementById('stat-spent').innerText = formatMoney(totalSpent);
-        document.getElementById('stat-remain').innerText = formatMoney(remain);
-        
-        document.getElementById('stat-percent').innerText = `${validPercent.toFixed(1)}%`;
-        
-        const prog = document.getElementById('stat-progress');
-        prog.style.width = `${validPercent}%`;
-        prog.style.backgroundColor = validPercent < 20 ? "#f44336" : (validPercent < 50 ? "#ff9800" : "#4CAF50");
-    }
-
-    function saveExpense() {
-        const cat = document.getElementById('expCategory').value;
-        const date = document.getElementById('expDate').value;
-        const amount = parseFloat(document.getElementById('expAmount').value);
-        const note = document.getElementById('expNote').value;
-
-        if(!date || !amount || isNaN(amount)) { alert("กรุณาระบุวันที่และจำนวนเงินที่ถูกต้อง"); return; }
-        if(!monthExpenses[viewingMonth]) monthExpenses[viewingMonth] = [];
-
-        if(editId) {
-            let index = monthExpenses[viewingMonth].findIndex(e => e.id === editId);
-            if(index > -1) {
-                monthExpenses[viewingMonth][index] = { id: editId, category: cat, date: date, amount: amount, note: note };
-            }
-            cancelEdit();
-        } else {
-            monthExpenses[viewingMonth].unshift({ id: generateId(), category: cat, date: date, amount: amount, note: note });
-            document.getElementById('expAmount').value = '';
-            document.getElementById('expNote').value = '';
-        }
-        
-        saveData(); 
-        renderExpenseView();
-    }
-
-    function deleteExpense(id) {
-        if(confirm("ลบรายการนี้?")) {
-            monthExpenses[viewingMonth] = monthExpenses[viewingMonth].filter(e => e.id !== id);
-            saveData();
-            renderExpenseView();
-        }
-    }
-
-    function editExpense(id) {
-        let exp = monthExpenses[viewingMonth].find(e => e.id === id);
-        if(exp) {
-            document.getElementById('expCategory').value = exp.category;
-            document.getElementById('expDate').value = exp.date;
-            document.getElementById('expAmount').value = exp.amount;
-            document.getElementById('expNote').value = exp.note;
-            
-            editId = id;
-            document.getElementById('form-title').innerText = "แก้ไขรายการ";
-            document.getElementById('btnSave').innerText = "อัปเดตข้อมูล";
-            document.getElementById('btnSave').style.backgroundColor = "#ffb300";
-            document.getElementById('btnSave').style.color = "#333";
-            document.getElementById('btnCancel').style.display = "block";
-            
-            window.scrollTo({ top: 300, behavior: 'smooth' });
-        }
-    }
-
-    function cancelEdit() {
-        editId = null;
-        document.getElementById('form-title').innerText = "บันทึกรายจ่าย";
-        document.getElementById('btnSave').innerText = "บันทึกข้อมูล";
-        document.getElementById('btnSave').style.backgroundColor = "#1F4E78";
-        document.getElementById('btnSave').style.color = "white";
-        document.getElementById('btnCancel').style.display = "none";
-        
-        document.getElementById('expAmount').value = '';
-        document.getElementById('expNote').value = '';
-    }
-
-    // เริ่มต้นระบบ
-    loadData();
-    calculate();
-</script>
-
-</body>
-</html>
+        list.innerHTML = current
