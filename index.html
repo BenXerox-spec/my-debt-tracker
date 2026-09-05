@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการหนี้และกระแสเงินสด</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f2f2f7; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; min-height: 100vh; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: hidden; }
+        h1, h2 { color: #1F4E78; text-align: center; }
+        
+        .page-view { display: none; animation: fadeIn 0.3s ease; }
+        .page-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Main Page Styles --- */
+        .timeline-box { background-color: #1F4E78; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .timeline-box h2 { color: white; margin: 0; font-size: 1.2em; }
+        .timeline-box p { margin: 5px 0 0 0; font-size: 1em; opacity: 0.9; }
+
+        .control-panel { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9em; }
+        input[type="number"], input[type="date"], input[type="text"], input[type="range"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+        
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .card { padding: 15px 10px; text-align: center; border-radius: 8px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .bg-income { background-color: #4CAF50; }
+        .bg-savings { background-color: #2196F3; }
+        .bg-debt { background-color: #f44336; }
+        .bg-cash { background-color: #ff9800; cursor: pointer; transition: transform 0.2s; border: 2px solid #e68a00; }
+        .bg-cash:hover, .bg-cash:active { transform: scale(0.97); }
+        .card h3 { margin: 0 0 5px 0; font-size: 0.9em; opacity: 0.9; }
+        .card .amount { font-size: 1.4em; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn { color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; flex: 1; font-weight: bold; transition: background 0.3s; text-align: center; }
+        .btn-primary { background-color: #1F4E78; }
+        .btn-danger { background-color: #e53935; }
+        .btn-warning { background-color: #ff9800; }
+        
+        /* Grid เดือนแบบ Scrollable */
+        .month-grid-container { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 20px; }
+        .grid-header { font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 10px; text-align: center; }
+        .month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 6px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
+        .month-box { background: #e0e0e0; padding: 8px 2px; text-align: center; border-radius: 4px; font-size: 0.75em; color: #666; transition: 0.3s; }
+        .month-box.paid { background: #4CAF50; color: white; font-weight: bold; box-shadow: 0 1px 3px rgba(76,175,80,0.4); }
+        .month-box.active-month { border: 2px solid #ff9800; background: #fff; color: #ff9800; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-bottom: 20px; }
+        th, td { padding: 10px 5px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #1F4E78; color: white; }
+        .zero-balance { color: #aaa; text-decoration: line-through; }
+
+        /* --- Expense Page Styles --- */
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; background: #1F4E78; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .nav-bar button { background: none; border: none; color: white; font-size: 1.1em; cursor: pointer; font-weight: bold; }
+        
+        /* งบประมาณแนะนำ */
+        .budget-suggestions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .suggest-box { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .suggest-box .title { font-size: 0.8em; color: #666; }
+        .suggest-box .val { font-size: 1.1em; font-weight: bold; color: #1F4E78; margin-top: 5px; }
+        .suggest-box .spent { font-size: 0.75em; color: #f44336; margin-top: 2px; }
+
+        .budget-status { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 4px solid #ff9800; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.1em; }
+        .stat-row.total { font-weight: bold; font-size: 1.3em; color: #ff9800; border-top: 1px solid #eee; padding-top: 10px; }
+        
+        .progress-bar { width: 100%; background: #eee; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; background: #4CAF50; transition: width 0.3s, background-color 0.3s; }
+        
+        .recent-list { margin-top: 20px; background: #fafafa; border-radius: 8px; padding: 10px; border: 1px solid #eee; }
+        .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; font-size: 0.9em; }
+        .expense-item:last-child { border-bottom: none; }
+        .expense-info { flex: 1; }
+        .expense-actions { display: flex; gap: 5px; }
+        .action-btn { padding: 5px 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8em; }
+        .btn-edit { background: #ffb300; color: #333; font-weight: bold;}
+        .btn-del { background: #e53935; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="main-page" class="page-view active">
+        <div class="timeline-box">
+            <h2 id="current-month-display">เดือนปัจจุบัน: กันยายน 2569</h2>
+            <p id="month-counter">สถานะ: ปัจจุบัน</p>
+        </div>
+
+        <div class="control-panel">
+            <div class="form-group">
+                <label>รายได้รายเดือน (บาท)</label>
+                <input type="number" id="income" value="32000" oninput="calculate()">
+            </div>
+            <div class="form-group">
+                <label>เงินเก็บ (%): <span id="savings-val">10%</span></label>
+                <input type="range" id="savings-pct" min="0" max="30" value="10" oninput="calculate()">
+            </div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="card bg-income">
+                <h3>รายได้รวม</h3>
+                <div class="amount" id="sum-income">฿0</div>
+            </div>
+            <div class="card bg-savings">
+                <h3>หักเงินออม</h3>
+                <div class="amount" id="sum-savings">฿0</div>
+            </div>
+            <div class="card bg-debt">
+                <h3>ยอดผ่อนหนี้รวม</h3>
+                <div class="amount" id="sum-debt">฿0</div>
+            </div>
+            <div class="card bg-cash" onclick="goToExpensePage()">
+                <h3>เงินเหลือ (แตะเพื่อจัดการ) 👆</h3>
+                <div class="amount" id="sum-cash">฿0</div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="payOneMonth()">จำลองจ่ายหนี้ 1 เดือน ⏭️</button>
+            <button class="btn btn-danger" onclick="resetData()">รีเซ็ตข้อมูล 🔄</button>
+        </div>
+
+        <div class="month-grid-container">
+            <div class="grid-header" id="grid-title">จำลองระยะเวลาผ่อนหนี้ (จนกว่าจะหมด)</div>
+            <div class="month-grid" id="year-grid">
+                </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table id="debt-table">
+                <thead>
+                    <tr>
+                        <th>รายการ</th>
+                        <th>ยอดคงเหลือ</th>
+                        <th>ผ่อน</th>
+                        <th>งวดคงเหลือ</th>
+                    </tr>
+                </thead>
+                <tbody id="debt-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <div id="expense-page" class="page-view">
+        <div class="nav-bar">
+            <button onclick="goToMainPage()">🔙 กลับ</button>
+            <span id="expense-month-title">จัดการเงินรายวัน</span>
+            <span style="width: 20px;"></span>
+        </div>
+
+        <div class="budget-status">
+            <div class="stat-row">
+                <span>งบประมาณเดือนนี้:</span>
+                <span id="stat-budget">฿0</span>
+            </div>
+            <div class="stat-row" style="color: #f44336;">
+                <span>ใช้ไปแล้วทั้งหมด:</span>
+                <span id="stat-spent">฿0</span>
+            </div>
+            <div class="stat-row total">
+                <span>เงินคงเหลือ:</span>
+                <span id="stat-remain">฿0</span>
+            </div>
+            
+            <div style="text-align: right; font-size: 0.8em; margin-top: 5px; color: #666;">เหลือ <span id="stat-percent">100%</span></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="stat-progress"></div>
+            </div>
+        </div>
+
+        <h3 style="color:#1F4E78; font-size: 1em; text-align: center;">💡 แผนการจัดสรรเงินแนะนำ</h3>
+        <div class="budget-suggestions">
+            <div class="suggest-box">
+                <div class="title">🍲 ค่าอาหาร (50%)</div>
+                <div class="val" id="sug-food">฿0</div>
+                <div class="spent" id="spent-food">ใช้ไป: ฿0</div>
+            </div>
+            <div class="suggest-box">
+                <div class="title">🛒 ของใช้ (20%)</div>
+                <div class="val" id="sug-shop">฿0</div>
+                <div class="spent" id="spent-shop">ใช้ไป: ฿0</div>
+            </div>
+            <div class="suggest-box">
+                <div class="title">🚌 เดินทาง (15%)</div>
+                <div class="val" id="sug-travel">฿0</div>
+                <div class="spent" id="spent-travel">ใช้ไป: ฿0</div>
+            </div>
+            <div class="suggest-box">
+                <div class="title">📦 อื่นๆ (15%)</div>
+                <div class="val" id="sug-misc">฿0</div>
+                <div class="spent" id="spent-misc">ใช้ไป: ฿0</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3 style="margin-top:0; color:#1F4E78;" id="form-title">บันทึกรายจ่าย</h3>
+            <div class="form-group">
+                <label>หมวดหมู่</label>
+                <select id="expCategory">
+                    <option value="ค่าอาหาร">ค่าอาหาร</option>
+                    <option value="ของใช้">ของใช้</option>
+                    <option value="เดินทาง">เดินทาง</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>วันที่</label>
+                <input type="date" id="expDate">
+            </div>
+            <div class="form-group">
+                <label>จำนวนเงิน (บาท)</label>
+                <input type="number" id="expAmount" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>รายการ</label>
+                <input type="text" id="expNote" placeholder="เช่น ข้าวกะเพรา">
+            </div>
+            <button class="btn btn-primary" id="btnSave" onclick="saveExpense()" style="width:100%; margin-top: 10px;">บันทึกข้อมูล</button>
+            <button class="btn btn-danger" id="btnCancel" onclick="cancelEdit()" style="width:100%; margin-top: 10px; display:none;">ยกเลิกแก้ไข</button>
+        </div>
+
+        <div class="recent-list" id="recentList">
+            </div>
+    </div>
+
+</div>
+
+<script>
+    // --- State Management ---
+    const startYear = 2026;
+    const startMonth = 8; // กันยายน
+    let simulatedMonths = 0; 
+    const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    const shortMonthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    
+    let currentSummary = { cash: 0 };
+    let localExpenses = []; // เก็บ Data ใน Memory แบบ Local
+    let editId = null; // เช็คสถานะการแก้ไข
+
+    const initialDebts = [
+        { name: "บ้าน", balance: 1107494, payment: 6100 },
+        { name: "KBANK", balance: 384102, payment: 4400 },
+        { name: "KT Payday", balance: 29359, payment: 800 },
+        { name: "Shopee", balance: 37100, payment: 2500 }, 
+        { name: "ประกัน", balance: 7788, payment: 1947 }, 
+        { name: "F.Choice", balance: 16000, payment: 1000 }, 
+        { name: "TTB", balance: 3240, payment: 406 }, 
+        { name: "TikTok", balance: 153, payment: 78 } 
+    ];
+
+    let debts = JSON.parse(JSON.stringify(initialDebts));
+
+    // วันที่เริ่มต้น
+    document.getElementById('expDate').valueAsDate = new Date();
+
+    function formatMoney(amount) {
+        return "฿" + amount.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    }
+    
+    function generateId() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    // --- Main Page Functions ---
+    function updateDisplayDates(maxDebtMonths) {
+        let currentDate = new Date(startYear, startMonth + simulatedMonths, 1);
+        let mNameFull = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`;
+        
+        document.getElementById("current-month-display").innerText = `เดือนปัจจุบัน: ${mNameFull}`;
+        document.getElementById("month-counter").innerText = simulatedMonths === 0 ? "สถานะ: ปัจจุบัน" : `จำลองล่วงหน้า: ${simulatedMonths} เดือน`;
+        document.getElementById("expense-month-title").innerText = `งบ: ${mNameFull}`;
+
+        // Render Grid ยาวจนกว่าหนี้ก้อนสุดท้ายจะหมด
+        const grid = document.getElementById("year-grid");
+        grid.innerHTML = "";
+        
+        let totalGridBoxes = simulatedMonths + maxDebtMonths;
+        if(totalGridBoxes === 0) totalGridBoxes = 1; // กันบัคกรณีหนี้ 0 หมด
+
+        for(let i = 0; i < totalGridBoxes; i++) {
+            let mDate = new Date(startYear, startMonth + i, 1);
+            let mName = `${shortMonthNames[mDate.getMonth()]} ${String(mDate.getFullYear()+543).substring(2)}`;
+            let isPaid = i < simulatedMonths;
+            let isActive = i === simulatedMonths; 
+            
+            let div = document.createElement("div");
+            div.className = `month-box ${isPaid ? "paid" : ""} ${isActive ? "active-month" : ""}`;
+            div.innerText = mName;
+            grid.appendChild(div);
+        }
+    }
+
+    function calculate() {
+        const income = parseFloat(document.getElementById("income").value) || 0;
+        const savingsPct = parseFloat(document.getElementById("savings-pct").value) || 0;
+        document.getElementById("savings-val").innerText = savingsPct + "%";
+
+        const savingsAmount = income * (savingsPct / 100);
+        let totalDebtPayment = 0;
+        let maxMonthsLeft = 0;
+        
+        debts.forEach(debt => {
+            if (debt.balance > 0) {
+                totalDebtPayment += (debt.balance < debt.payment) ? debt.balance : debt.payment;
+                let mLeft = Math.ceil(debt.balance / debt.payment);
+                if(mLeft > maxMonthsLeft) maxMonthsLeft = mLeft;
+            }
+        });
+
+        const remainingCash = income - savingsAmount - totalDebtPayment;
+        currentSummary.cash = remainingCash;
+
+        document.getElementById("sum-income").innerText = formatMoney(income);
+        document.getElementById("sum-savings").innerText = formatMoney(savingsAmount);
+        document.getElementById("sum-debt").innerText = formatMoney(totalDebtPayment);
+        document.getElementById("sum-cash").innerText = formatMoney(remainingCash);
+
+        renderTable();
+        updateDisplayDates(maxMonthsLeft);
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("debt-list");
+        tbody.innerHTML = "";
+        debts.forEach(debt => {
+            let actualPayment = (debt.balance > 0 && debt.balance < debt.payment) ? debt.balance : debt.payment;
+            let monthsLeft = debt.balance <= 0 ? 0 : Math.ceil(debt.balance / debt.payment);
+            
+            let row = `<tr class="${debt.balance <= 0 ? 'zero-balance' : ''}">
+                <td>${debt.name}</td>
+                <td>${formatMoney(debt.balance)}</td>
+                <td>${formatMoney(debt.balance <= 0 ? 0 : actualPayment)}</td>
+                <td>${debt.balance <= 0 ? "✅ หมด" : monthsLeft + " งวด"}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function payOneMonth() {
+        simulatedMonths++; 
+        debts.forEach(debt => {
+            if (debt.balance > 0) {
+                debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
+            }
+        });
+        
+        // **รีเซ็ตรายจ่ายทั้งหมดเมื่อขึ้นเดือนใหม่**
+        localExpenses = []; 
+        cancelEdit();
+        calculate(); 
+    }
+
+    function resetData() {
+        simulatedMonths = 0; 
+        debts = JSON.parse(JSON.stringify(initialDebts)); 
+        localExpenses = [];
+        cancelEdit();
+        calculate();
+    }
+
+    // --- View Navigation & Expense Functions ---
+    function goToExpensePage() {
+        document.getElementById('main-page').classList.remove('active');
+        document.getElementById('expense-page').classList.add('active');
+        renderExpenseView(); 
+    }
+
+    function goToMainPage() {
+        document.getElementById('expense-page').classList.remove('active');
+        document.getElementById('main-page').classList.add('active');
+    }
+
+    function renderExpenseView() {
+        const budget = currentSummary.cash;
+        
+        // คำนวณงบแนะนำ
+        const sugFood = budget * 0.50;
+        const sugShop = budget * 0.20;
+        const sugTravel = budget * 0.15;
+        const sugMisc = budget * 0.15;
+
+        document.getElementById('sug-food').innerText = formatMoney(sugFood);
+        document.getElementById('sug-shop').innerText = formatMoney(sugShop);
+        document.getElementById('sug-travel').innerText = formatMoney(sugTravel);
+        document.getElementById('sug-misc').innerText = formatMoney(sugMisc);
+
+        let totalSpent = 0;
+        let spentCat = { "ค่าอาหาร": 0, "ของใช้": 0, "เดินทาง": 0, "อื่นๆ": 0 };
+
+        const list = document.getElementById('recentList');
+        list.innerHTML = localExpenses.length === 0 ? '<div style="text-align:center; color:#999; padding:20px;">ยังไม่มีรายการในเดือนนี้</div>' : '';
+        
+        // Loop รายการ
+        localExpenses.forEach(exp => {
+            totalSpent += exp.amount;
+            if(spentCat[exp.category] !== undefined) spentCat[exp.category] += exp.amount;
+
+            list.innerHTML += `
+                <div class="expense-item">
+                    <div class="expense-info">
+                        <span style="font-weight:bold; color:#1F4E78;">[${exp.category}]</span> ${exp.note || 'ไม่มีหมายเหตุ'}<br>
+                        <small style="color:#888;">${exp.date}</small>
+                    </div>
+                    <div style="text-align:right; margin-right:10px;">
+                        <strong style="color:#f44336;">-฿${exp.amount.toLocaleString()}</strong>
+                    </div>
+                    <div class="expense-actions">
+                        <button class="action-btn btn-edit" onclick="editExpense('${exp.id}')">✏️</button>
+                        <button class="action-btn btn-del" onclick="deleteExpense('${exp.id}')">🗑️</button>
+                    </div>
+                </div>`;
+        });
+
+        // อัปเดตยอดใช้จ่ายตามหมวด
+        document.getElementById('spent-food').innerText = `ใช้ไป: ฿${spentCat["ค่าอาหาร"].toLocaleString()}`;
+        document.getElementById('spent-shop').innerText = `ใช้ไป: ฿${spentCat["ของใช้"].toLocaleString()}`;
+        document.getElementById('spent-travel').innerText = `ใช้ไป: ฿${spentCat["เดินทาง"].toLocaleString()}`;
+        document.getElementById('spent-misc').innerText = `ใช้ไป: ฿${spentCat["อื่นๆ"].toLocaleString()}`;
+
+        // อัปเดตบาร์
+        const remain = budget - totalSpent;
+        const percent = budget > 0 ? (remain / budget) * 100 : 0;
+        const validPercent = Math.max(0, Math.min(100, percent)); 
+
+        document.getElementById('stat-budget').innerText = formatMoney(budget);
+        document.getElementById('stat-spent').innerText = formatMoney(totalSpent);
+        document.getElementById('stat-remain').innerText = formatMoney(remain);
+        
+        document.getElementById('stat-percent').innerText = `${validPercent.toFixed(1)}%`;
+        
+        const prog = document.getElementById('stat-progress');
+        prog.style.width = `${validPercent}%`;
+        prog.style.backgroundColor = validPercent < 20 ? "#f44336" : (validPercent < 50 ? "#ff9800" : "#4CAF50");
+    }
+
+    function saveExpense() {
+        const cat = document.getElementById('expCategory').value;
+        const date = document.getElementById('expDate').value;
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        const note = document.getElementById('expNote').value;
+
+        if(!date || !amount || isNaN(amount)) { alert("กรุณาระบุวันที่และจำนวนเงินที่ถูกต้อง"); return; }
+
+        if(editId) {
+            // Update
+            let index = localExpenses.findIndex(e => e.id === editId);
+            if(index > -1) {
+                localExpenses[index] = { id: editId, category: cat, date: date, amount: amount, note: note };
+            }
+            cancelEdit();
+        } else {
+            // Add New (Push to top)
+            localExpenses.unshift({ id: generateId(), category: cat, date: date, amount: amount, note: note });
+            document.getElementById('expAmount').value = '';
+            document.getElementById('expNote').value = '';
+        }
+        
+        renderExpenseView();
+    }
+
+    function deleteExpense(id) {
+        if(confirm("ลบรายการนี้?")) {
+            localExpenses = localExpenses.filter(e => e.id !== id);
+            renderExpenseView();
+        }
+    }
+
+    function editExpense(id) {
+        let exp = localExpenses.find(e => e.id === id);
+        if(exp) {
+            document.getElementById('expCategory').value = exp.category;
+            document.getElementById('expDate').value = exp.date;
+            document.getElementById('expAmount').value = exp.amount;
+            document.getElementById('expNote').value = exp.note;
+            
+            editId = id;
+            document.getElementById('form-title').innerText = "แก้ไขรายการ";
+            document.getElementById('btnSave').innerText = "อัปเดตข้อมูล";
+            document.getElementById('btnSave').style.backgroundColor = "#ffb300";
+            document.getElementById('btnSave').style.color = "#333";
+            document.getElementById('btnCancel').style.display = "block";
+            
+            // Scroll ขึ้นไปที่ฟอร์ม
+            window.scrollTo({ top: 300, behavior: 'smooth' });
+        }
+    }
+
+    function cancelEdit() {
+        editId = null;
+        document.getElementById('form-title').innerText = "บันทึกรายจ่าย";
+        document.getElementById('btnSave').innerText = "บันทึกข้อมูล";
+        document.getElementById('btnSave').style.backgroundColor = "#1F4E78";
+        document.getElementById('btnSave').style.color = "white";
+        document.getElementById('btnCancel').style.display = "none";
+        
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expNote').value = '';
+    }
+
+    // โหลดครั้งแรก
+    calculate();
+</script>
+
+</body>
+</html>
