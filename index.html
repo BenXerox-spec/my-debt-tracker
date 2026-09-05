@@ -37,8 +37,10 @@
         .btn { color: white; padding: 15px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.05em; flex: 1; font-weight: bold; transition: background 0.3s; text-align: center; }
         .btn-success { background-color: #4CAF50; }
         .btn-success:hover { background-color: #388E3C; }
+        .btn-success:disabled { background-color: #a5d6a7; cursor: not-allowed; }
         .btn-danger { background-color: #e53935; }
         .btn-primary { background-color: #1F4E78; }
+        .btn-warning { background-color: #ffb300; color: #333; }
         
         /* Modal Style (ป๊อปอัปยืนยันจ่ายหนี้) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
@@ -46,7 +48,8 @@
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; }
         .modal-title { color: #1F4E78; margin-top: 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .slip-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.95em; }
-        .slip-table td { padding: 8px 0; border-bottom: 1px dashed #ddd; }
+        .slip-table td { padding: 10px 0; border-bottom: 1px dashed #ddd; vertical-align: middle; }
+        .slip-table input[type="checkbox"] { transform: scale(1.3); margin-right: 10px; cursor: pointer; }
         .slip-total { font-size: 1.3em; font-weight: bold; color: #f44336; text-align: center; margin: 15px 0; padding: 10px; background: #ffeeee; border-radius: 8px; }
 
         /* Grid เดือนแบบ Scrollable */
@@ -61,6 +64,7 @@
         th, td { padding: 10px 5px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #1F4E78; color: white; }
         .zero-balance { color: #aaa; text-decoration: line-through; }
+        .btn-edit-inline { font-size: 0.8em; color: #ff9800; border: 1px solid #ff9800; padding: 2px 6px; border-radius: 4px; cursor: pointer; margin-left: 5px; background: #fff; white-space: nowrap; }
 
         /* --- Expense Page Styles --- */
         .nav-bar { display: flex; justify-content: space-between; align-items: center; background: #1F4E78; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
@@ -131,11 +135,11 @@
 
         <div class="btn-group">
             <button class="btn btn-success" onclick="openPayModal()">✅ บันทึกจ่ายหนี้เดือนนี้</button>
-            <button class="btn btn-danger" onclick="resetData()">ลบข้อมูล 🔄</button>
+            <button class="btn btn-danger" onclick="resetData()">ลบข้อมูลใหม่หมด 🔄</button>
         </div>
 
         <div class="month-grid-container">
-            <div class="grid-header" id="grid-title">ระยะเวลาผ่อนหนี้ (กดที่เดือนเพื่อดูประวัติรายจ่าย)</div>
+            <div class="grid-header" id="grid-title">ระยะเวลาผ่อนหนี้ (กดที่เดือนอดีต เพื่อย้อนการจำลองได้)</div>
             <div class="month-grid" id="year-grid">
                 </div>
         </div>
@@ -145,7 +149,7 @@
                 <thead>
                     <tr>
                         <th>รายการ</th>
-                        <th>ยอดคงเหลือ</th>
+                        <th>ยอดคงเหลือ (กดปุ่มเพื่อแก้)</th>
                         <th>ผ่อน</th>
                         <th>งวดคงเหลือ</th>
                     </tr>
@@ -163,7 +167,9 @@
             <span style="width: 20px;"></span>
         </div>
 
-        <div class="budget-status">
+        <div id="revert-btn-container"></div>
+
+        <div class="budget-status" style="margin-top: 15px;">
             <div class="stat-row">
                 <span>งบประมาณเดือนนี้:</span>
                 <span id="stat-budget">฿0</span>
@@ -243,7 +249,7 @@
 <div class="modal-overlay" id="payModal">
     <div class="modal-content">
         <h2 class="modal-title" id="modal-month-title">ยืนยันจ่ายหนี้</h2>
-        <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: -5px;">รายการที่ต้องชำระในเดือนนี้</p>
+        <p style="text-align: center; font-size: 0.85em; color: #666; margin-top: -5px;">(กรุณาติ๊กให้ครบทุกรายการก่อนกดยืนยัน)</p>
         
         <table class="slip-table" id="modal-slip-list">
             </table>
@@ -252,7 +258,7 @@
             ยอดรวมที่ต้องจ่าย: <br><span id="modal-slip-total">฿0</span>
         </div>
         
-        <button class="btn btn-success" style="width:100%; margin-bottom:10px; padding: 15px;" onclick="confirmPayDebt()">ยืนยันว่าจ่ายครบแล้ว ✅</button>
+        <button class="btn btn-success" id="btn-confirm-pay" style="width:100%; margin-bottom:10px; padding: 15px;" onclick="confirmPayDebt()" disabled>กรุณาติ๊กบิลให้ครบ 🔒</button>
         <button class="btn" style="width:100%; background:#e0e0e0; color:#333;" onclick="closePayModal()">ยกเลิก</button>
     </div>
 </div>
@@ -263,6 +269,9 @@
     const startMonth = 8; // กันยายน
     let simulatedMonths = 0; 
     let viewingMonth = 0; 
+    
+    // เก็บ History หนี้และรายจ่ายแบบแยกตามเดือน
+    let debtHistory = {}; 
     let monthExpenses = {}; 
     
     const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -270,6 +279,7 @@
     
     let currentSummary = { cash: 0, debtPayment: 0 };
     let editId = null; 
+    let debts = [];
 
     const initialDebts = [
         { name: "บ้าน", balance: 1107494, payment: 6100 },
@@ -282,19 +292,20 @@
         { name: "TikTok", balance: 153, payment: 78 } 
     ];
 
-    let debts = JSON.parse(JSON.stringify(initialDebts));
-
     document.getElementById('expDate').valueAsDate = new Date();
 
     // --- LocalStorage Functions ---
     function loadData() {
-        const saved = localStorage.getItem('debtAppDB');
+        const saved = localStorage.getItem('debtAppDB_v2');
         if (saved) {
             const parsed = JSON.parse(saved);
             simulatedMonths = parsed.simulatedMonths || 0;
             monthExpenses = parsed.monthExpenses || {};
+            debtHistory = parsed.debtHistory || { 0: JSON.parse(JSON.stringify(initialDebts)) };
             if (parsed.income) document.getElementById('income').value = parsed.income;
             if (parsed.savingsPct) document.getElementById('savings-pct').value = parsed.savingsPct;
+        } else {
+            debtHistory[0] = JSON.parse(JSON.stringify(initialDebts));
         }
     }
 
@@ -302,10 +313,11 @@
         const data = {
             simulatedMonths: simulatedMonths,
             monthExpenses: monthExpenses,
+            debtHistory: debtHistory,
             income: document.getElementById('income').value,
             savingsPct: document.getElementById('savings-pct').value
         };
-        localStorage.setItem('debtAppDB', JSON.stringify(data));
+        localStorage.setItem('debtAppDB_v2', JSON.stringify(data));
     }
 
     function formatMoney(amount) {
@@ -343,7 +355,7 @@
             if (isPastOrCurrent) {
                 div.style.cursor = "pointer";
                 div.onclick = function() { openExpensePage(i); };
-                div.title = "กดเพื่อดู/บันทึกรายจ่ายเดือนนี้";
+                div.title = "กดเพื่อดู/ย้อนกลับ";
             }
             
             grid.appendChild(div);
@@ -351,12 +363,11 @@
     }
 
     function calculate() {
-        debts = JSON.parse(JSON.stringify(initialDebts));
-        for(let m = 0; m < simulatedMonths; m++) {
-            debts.forEach(debt => {
-                if (debt.balance > 0) debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
-            });
+        // ดึงข้อมูลหนี้ของเดือนปัจจุบันมาแสดง (ถ้าพังให้ fallback กลับไปเอาเดือน 0)
+        if(!debtHistory[simulatedMonths]) {
+            debtHistory[simulatedMonths] = JSON.parse(JSON.stringify(debtHistory[simulatedMonths-1] || initialDebts));
         }
+        debts = JSON.parse(JSON.stringify(debtHistory[simulatedMonths]));
 
         const income = parseFloat(document.getElementById("income").value) || 0;
         const savingsPct = parseFloat(document.getElementById("savings-pct").value) || 0;
@@ -391,13 +402,16 @@
     function renderTable() {
         const tbody = document.getElementById("debt-list");
         tbody.innerHTML = "";
-        debts.forEach(debt => {
+        debts.forEach((debt, index) => {
             let actualPayment = (debt.balance > 0 && debt.balance < debt.payment) ? debt.balance : debt.payment;
             let monthsLeft = debt.balance <= 0 ? 0 : Math.ceil(debt.balance / debt.payment);
             
+            // ปุ่มโปะ (แก้ไข) จะโชว์เฉพาะหนี้ที่ยังไม่หมด
+            let editBtn = debt.balance > 0 ? `<span class="btn-edit-inline" onclick="editDebtBalance(${index})">โปะ/แก้</span>` : '';
+
             let row = `<tr class="${debt.balance <= 0 ? 'zero-balance' : ''}">
                 <td>${debt.name}</td>
-                <td>${formatMoney(debt.balance)}</td>
+                <td>${formatMoney(debt.balance)} <br> ${editBtn}</td>
                 <td>${formatMoney(debt.balance <= 0 ? 0 : actualPayment)}</td>
                 <td>${debt.balance <= 0 ? "✅ หมด" : monthsLeft + " งวด"}</td>
             </tr>`;
@@ -405,7 +419,25 @@
         });
     }
 
-    // --- Pay Debt Modal Functions ---
+    // ฟังก์ชันแก้ไขยอดหนี้ (โปะเงิน)
+    function editDebtBalance(index) {
+        let currentBal = debts[index].balance;
+        let input = prompt(`แก้ไขยอดคงเหลือของ "${debts[index].name}"\n(ป้อนยอดใหม่ที่ต้องการหลังจากโปะ):`, currentBal);
+        
+        if(input !== null) {
+            let newVal = parseFloat(input);
+            if(!isNaN(newVal) && newVal >= 0) {
+                debts[index].balance = newVal;
+                // เซฟทับข้อมูลหนี้ในเดือนปัจจุบัน
+                debtHistory[simulatedMonths] = JSON.parse(JSON.stringify(debts));
+                calculate();
+            } else {
+                alert("กรุณาใส่ตัวเลขที่ถูกต้อง");
+            }
+        }
+    }
+
+    // --- Pay Debt Modal & Checkbox Logic ---
     function openPayModal() {
         let currentDate = new Date(startYear, startMonth + simulatedMonths, 1);
         let mNameFull = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`;
@@ -417,21 +449,41 @@
             if (debt.balance > 0) {
                 let actualPayment = (debt.balance < debt.payment) ? debt.balance : debt.payment;
                 slipHtml += `<tr>
-                                <td>${debt.name}</td>
+                                <td><label style="display:flex; align-items:center; cursor:pointer;"><input type="checkbox" class="slip-checkbox" onchange="checkSlipReady()"> ${debt.name}</label></td>
                                 <td style="text-align: right; color:#333;">${formatMoney(actualPayment)}</td>
                              </tr>`;
             }
         });
         
+        let btnConfirm = document.getElementById('btn-confirm-pay');
+        
         if(slipHtml === '') {
             slipHtml = '<tr><td colspan="2" style="text-align:center; color:#4CAF50; font-weight:bold; border:none; padding:20px;">🎉 ยินดีด้วย! คุณไม่มีหนี้ที่ต้องชำระแล้ว</td></tr>';
             document.getElementById('modal-slip-total').innerText = '฿0';
+            btnConfirm.disabled = false;
+            btnConfirm.innerText = 'ข้ามไปเดือนถัดไป ⏭️';
         } else {
             document.getElementById('modal-slip-total').innerText = formatMoney(currentSummary.debtPayment);
+            btnConfirm.disabled = true;
+            btnConfirm.innerText = 'กรุณาติ๊กบิลให้ครบ 🔒';
         }
 
         document.getElementById('modal-slip-list').innerHTML = slipHtml;
         document.getElementById('payModal').classList.add('active');
+    }
+
+    function checkSlipReady() {
+        let checkboxes = document.querySelectorAll('.slip-checkbox');
+        let allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        let btn = document.getElementById('btn-confirm-pay');
+        
+        if(allChecked && checkboxes.length > 0) {
+            btn.disabled = false;
+            btn.innerText = 'ยืนยันว่าจ่ายครบแล้ว ✅';
+        } else {
+            btn.disabled = true;
+            btn.innerText = 'กรุณาติ๊กบิลให้ครบ 🔒';
+        }
     }
 
     function closePayModal() {
@@ -439,7 +491,15 @@
     }
 
     function confirmPayDebt() {
+        // หักยอดหนี้เตรียมสำหรับเดือนถัดไป
+        let nextDebts = JSON.parse(JSON.stringify(debts));
+        nextDebts.forEach(debt => {
+            if (debt.balance > 0) debt.balance = (debt.balance < debt.payment) ? 0 : debt.balance - debt.payment;
+        });
+
         simulatedMonths++; 
+        debtHistory[simulatedMonths] = nextDebts; // เซฟประวัติสำหรับเดือนใหม่
+
         if(!monthExpenses[simulatedMonths]) {
             monthExpenses[simulatedMonths] = [];
         }
@@ -452,10 +512,11 @@
     }
 
     function resetData() {
-        if(confirm("แน่ใจหรือไม่? ข้อมูลการจำลองและรายจ่ายที่จดไว้ทั้งหมดจะถูกลบ!")) {
-            localStorage.removeItem('debtAppDB');
+        if(confirm("แน่ใจหรือไม่? ข้อมูลการจำลองและรายจ่ายที่จดไว้ทั้งหมดจะถูกลบเริ่มต้นใหม่!")) {
+            localStorage.removeItem('debtAppDB_v2');
             simulatedMonths = 0;
             monthExpenses = {};
+            debtHistory = { 0: JSON.parse(JSON.stringify(initialDebts)) };
             document.getElementById('income').value = 32000;
             document.getElementById('savings-pct').value = 10;
             cancelEdit();
@@ -463,7 +524,7 @@
         }
     }
 
-    // --- View Navigation & Expense Functions ---
+    // --- View Navigation, Undo & Expense Functions ---
     function openExpensePage(monthIndex) {
         viewingMonth = monthIndex;
         document.getElementById('main-page').classList.remove('active');
@@ -480,9 +541,41 @@
         document.getElementById('main-page').classList.add('active');
         cancelEdit();
     }
+    
+    // ฟังก์ชันย้อนเวลากลับมาที่เดือนที่คลิก (ลบอนาคตทิ้ง)
+    function revertToThisMonth() {
+        if(confirm("⚠️ คำเตือน: คุณกำลังจะย้อนเวลากลับมาเริ่มที่เดือนนี้\nข้อมูลการจำลองและบิลรายจ่ายของเดือนในอนาคตทั้งหมดจะถูกลบทิ้ง แน่ใจหรือไม่?")) {
+            simulatedMonths = viewingMonth;
+            
+            // เคลียร์ History ที่เกินกว่าเดือนปัจจุบัน
+            Object.keys(debtHistory).forEach(m => { if(parseInt(m) > simulatedMonths) delete debtHistory[m]; });
+            Object.keys(monthExpenses).forEach(m => { if(parseInt(m) > simulatedMonths) delete monthExpenses[m]; });
+            
+            saveData();
+            goToMainPage();
+            calculate();
+        }
+    }
 
     function renderExpenseView() {
-        const budget = currentSummary.cash; 
+        // จัดการปุ่มย้อนเวลา (Undo)
+        let revertBtnContainer = document.getElementById('revert-btn-container');
+        if(viewingMonth < simulatedMonths) {
+            revertBtnContainer.innerHTML = `<button class="btn btn-warning" style="width:100%; margin-bottom:15px;" onclick="revertToThisMonth()">⏪ ย้อนการจำลองกลับมาเริ่มที่เดือนนี้ (ลบข้อมูลอนาคต)</button>`;
+            document.getElementById('expense-form-panel').style.opacity = '0.6'; // ทำให้ฟอร์มจางลงนิดนึงเพราะเป็นเดือนอดีต
+        } else {
+            revertBtnContainer.innerHTML = '';
+            document.getElementById('expense-form-panel').style.opacity = '1';
+        }
+
+        // ดึง Cash ของเดือนที่กำลังดูมาคำนวณงบ
+        // คำนวณแบบย้อนกลับ: รายได้ - ออม - ยอดจ่ายหนี้ของเดือนนั้น
+        let vDebts = debtHistory[viewingMonth] || initialDebts;
+        let vIncome = parseFloat(document.getElementById("income").value) || 0;
+        let vSavings = vIncome * (parseFloat(document.getElementById("savings-pct").value) / 100);
+        let vDebtPay = 0;
+        vDebts.forEach(d => { if(d.balance>0) vDebtPay += (d.balance < d.payment) ? d.balance : d.payment; });
+        const budget = vIncome - vSavings - vDebtPay; 
         
         const sugFood = budget * 0.50;
         const sugShop = budget * 0.20;
